@@ -9,3 +9,5 @@ LCA Interpretation
 - [Catatan rekap proses hilir dan cara membuatnya ulang](docs/KNOWLEDGE_PROC_DWN.md)
 - [Rekap ulang lima sheet INTI, UT, dan DOWN dari unggahan terbaru](Rekap_Pareto_LMO_5_Sheet.xlsx)
 - [Catatan sumber, aturan hitung, pemeriksaan, dan generator rekap terbaru](docs/KNOWLEDGE_LMO_5_SHEET.md)
+- [Rekap Pareto BMO: empat tabel proses dan tiga tabel inventori](Rekap_Pareto_BMO.xlsx)
+- [Catatan metode dan keterbatasan data BMO](docs/KNOWLEDGE_BMO.md)
