@@ -28,7 +28,7 @@ def parse_source(sheet, kind):
     starts = [(i, r[2]) for i, r in enumerate(rows) if r[1] == "Category: "]
     if not starts:
         raise ValueError(f"Tidak ada blok kategori di {sheet.title}")
-    groups = defaultdict(lambda: {"total": 0.0, "unit": set(), "items": defaultdict(lambda: {"value": 0.0, "rows": set()}), "sources": [], "source_sheets": set()})
+    groups = defaultdict(lambda: {"total": 0.0, "unit": set(), "items": defaultdict(lambda: {"value": 0.0, "rows": set()}), "sources": []})
     seen, stages = set(), None
     for block, (start, raw) in enumerate(starts):
         if raw in seen:
@@ -49,11 +49,8 @@ def parse_source(sheet, kind):
             raise ValueError(f"Unit proses berubah: {sheet.title} / {raw}")
         total_row = rows[header_at + 1]
         expected = "Total of all processes" if kind == "PROC" else "Total of all compartments"
-        if sheet.title == "PROC HULU BMO" and total_row[2] != expected:
-            # Six inventory blocks were interleaved with the process blocks in
-            # this sheet; recover them only when parsing as LCI data.
-            continue
-        if total_row[2] != expected or not numeric(total_row[5 + shift]):
+        expected_header = "Process" if kind == "PROC" else "Substance"
+        if header[2] != expected_header or total_row[2] != expected or not numeric(total_row[5 + shift]):
             raise ValueError(f"Total tidak valid: {sheet.title} / {raw}")
         total = total_row[5 + shift]
         if total == 0:
@@ -62,7 +59,6 @@ def parse_source(sheet, kind):
         group["total"] += total
         group["unit"].add(str(total_row[4 + shift]))
         group["sources"].append(raw)
-        group["source_sheets"].add(sheet.title)
         for i in range(header_at + 2, end):
             r = rows[i]
             if not numeric(r[1]) or not r[2]:
@@ -86,9 +82,8 @@ def parse_source(sheet, kind):
     for energy in ("CEN", "CED"):
         if energy in groups and len(groups[energy]["sources"]) != 3:
             raise ValueError(f"{sheet.title}: {energy} harus memiliki tiga subkategori")
-    expected_count = (10 if kind == "PROC" else 6) if sheet.title == "PROC HULU BMO" else 10 if sheet.title == "LCI HULU BMO" else 16
-    if len(groups) != expected_count:
-        raise ValueError(f"{sheet.title}: {len(groups)} kategori, mengharapkan {expected_count}")
+    if set(groups) != set(ORDER):
+        raise ValueError(f"{sheet.title}: kategori tidak lengkap ({sorted(groups)})")
     return stages, groups
 
 
@@ -165,13 +160,6 @@ def proc_table(sheet, template, start, source_name, stages, groups, chosen):
     note.font = Font(name="Aptos", size=10, italic=True, color="52616B")
     note.alignment = Alignment(vertical="center", wrap_text=True)
     sheet.row_dimensions[row + 1].height = 25
-    if source_name == "PROC HULU BMO":
-        sheet.merge_cells(start_row=row + 2, start_column=2, end_row=row + 2, end_column=19)
-        warning = sheet.cell(row + 2, 2, "Data proses HULU untuk ODP, AP, EP, POFP, ABN, dan ABF tidak tersedia. Enam blok pada sumber berisi Substance/Compartment dan direkap pada tabel LCI HULU dengan penanda sumber.")
-        warning.font = Font(name="Aptos", size=10, bold=True, color="9C3D10")
-        warning.alignment = Alignment(vertical="center", wrap_text=True)
-        sheet.row_dimensions[row + 2].height = 34
-        return row + 2
     return row + 1
 
 
@@ -182,9 +170,7 @@ def lci_table(sheet, template, start, source_name, groups, chosen, proc_groups):
             style_from(sheet.cell(row, col), template["B2"])
         sheet.row_dimensions[row].height = 25
     sheet.merge_cells(start_row=start, start_column=2, end_row=start + 1, end_column=9)
-    source_label = ("LCI HULU BMO + enam blok inventori tersisip pada PROC HULU BMO"
-                    if phase == "HULU" else source_name)
-    title = sheet.cell(start, 2, f"HASIL ANALISIS ISU PENTING BERDASARKAN INVENTORY PRODUK — {DISPLAY[phase]} BMO\nPareto ≥80% per kategori dampak — sumber: {source_label}")
+    title = sheet.cell(start, 2, f"HASIL ANALISIS ISU PENTING BERDASARKAN INVENTORY PRODUK — {DISPLAY[phase]} BMO\nPareto ≥80% per kategori dampak — sumber: {source_name}")
     title.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     top = start + 3
     headings = ["No", "Kategori Dampak", "Unit proses / proses terkait*", "Inventori / substansi penyebab", "Nilai dampak", "Satuan", "Kontribusi bertanda", "Kumulatif arah neto"]
@@ -217,8 +203,7 @@ def lci_table(sheet, template, start, source_name, groups, chosen, proc_groups):
                     sheet.cell(row, col).alignment = Alignment(vertical="center", wrap_text=True)
                 stage, substance, compartment = key
                 process = related_process(proc_groups, impact, stage) if impact in proc_groups else f"Proses individual tidak tersedia pada PROC {phase} BMO"
-                source_mark = " †" if phase == "HULU" and source_name not in groups[impact]["source_sheets"] else ""
-                values = [rank, f"{impact}{source_mark} — {LABELS[impact]}", f"{stage}\n{process}", f"{substance}\n[{compartment}]" if compartment else substance, item["value"], next(iter(groups[impact]["unit"])), share, cumulative]
+                values = [rank, f"{impact} — {LABELS[impact]}", f"{stage}\n{process}", f"{substance}\n[{compartment}]" if compartment else substance, item["value"], next(iter(groups[impact]["unit"])), share, cumulative]
                 for col, value in enumerate(values, 2):
                     sheet.cell(row, col, value)
                 sheet.cell(row, 6).number_format = "0.00E+00"
@@ -226,11 +211,9 @@ def lci_table(sheet, template, start, source_name, groups, chosen, proc_groups):
                     sheet.cell(row, col).number_format = "0.00%"
                 sheet.row_dimensions[row].height = 50 if len(process) > 90 or len(substance) > 55 else 37
                 row += 1
-    missing = [impact for impact in ORDER if impact not in groups]
     notes = [
         "* Proses terkait dipilih dari kategori dan unit yang sama pada sheet PROC; sumber LCI tidak menunjukkan hubungan langsung inventori dengan proses individual.",
-        ("† Enam kategori LCI HULU (ODP, AP, EP, POFP, ABN, ABF) berasal dari blok Substance/Compartment yang tersisip pada PROC HULU BMO. " if phase == "HULU" else "")
-        + "Kategori tidak tersedia: " + (", ".join(missing) if missing else "tidak ada") + ". CEN/CED masing-masing menjumlahkan tiga subkategori; ETP tetap terpisah.",
+        "Semua 16 kategori dampak tersedia. CEN/CED masing-masing menjumlahkan tiga subkategori; ETP tetap terpisah.",
     ]
     for offset, message in enumerate(notes, 1):
         sheet.merge_cells(start_row=row + offset, start_column=2, end_row=row + offset, end_column=9)
@@ -253,13 +236,6 @@ def main():
     for name in PROC + LCI:
         stages, groups = parse_source(source[name], name.split()[0])
         parsed[name] = (stages, groups)
-    recovered_stages, recovered = parse_source(source["PROC HULU BMO"], "LCI")
-    lci_stages, lci_groups = parsed["LCI HULU BMO"]
-    if recovered_stages != lci_stages or set(recovered) & set(lci_groups):
-        raise ValueError("Enam kategori LCI HULU yang tersisip tidak dapat digabung dengan aman")
-    lci_groups.update(recovered)
-    if set(lci_groups) != set(ORDER):
-        raise ValueError("Kategori LCI HULU belum lengkap setelah pemulihan")
     for name in PROC + LCI:
         selected[name] = pareto(parsed[name][1])
         print(name, len(parsed[name][1]), "kategori,", sum(map(len, selected[name].values())), "baris Pareto")
