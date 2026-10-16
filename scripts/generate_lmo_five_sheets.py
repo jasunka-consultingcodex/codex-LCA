@@ -92,7 +92,7 @@ def parse_sheet(sheet, kind):
                 item = group["items"][key]
                 item["value"] += amount
                 item["rows"].add(row_index + 1)
-    expected_impacts = set(ORDER) - ({"WSF"} if sheet.title == "PROC INTI LMO" else set())
+    expected_impacts = set(ORDER)
     if set(groups) != expected_impacts:
         raise ValueError(f"Unexpected categories in {sheet.title}: {sorted(groups)}")
     for impact, group in groups.items():
@@ -213,12 +213,9 @@ def render_proc(workbook, template, name, phase, stages, groups, selected):
         sheet.cell(first, 2, stage)
         sheet.merge_cells(start_row=first, start_column=2, end_row=row - 1, end_column=2)
         sheet.cell(first, 2).alignment = Alignment(vertical="center", wrap_text=True)
-    if "WSF" not in groups:
-        sheet["P6"] = "Tidak ada pada sumber"
-        sheet["P6"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     notes = [
         "Unit proses di luar Pareto: " + ("; ".join(stage for stage in stages if stage not in included) or "tidak ada"),
-        f"Sumber: SimaPro LMO.xlsx / {'PROC DWN LMO' if phase == 'DOWN' else name}. Kontribusi bertanda mengikuti SimaPro; kumulatif arah neto ada di Audit Pareto. CEN/CED diagregasi; ETP terpisah.",
+        f"Sumber: SimaPro LMO.xlsx / {'PROC DWN LMO' if phase == 'DOWN' else name}. Kontribusi bertanda mengikuti SimaPro; kumulatif arah neto ada di workbook gabungan / Audit Pareto. CEN/CED diagregasi; ETP terpisah.",
     ]
     for index, value in enumerate(notes, row + 1):
         sheet.merge_cells(start_row=index, start_column=2, end_row=index, end_column=19)
@@ -237,7 +234,7 @@ def render_proc(workbook, template, name, phase, stages, groups, selected):
 
 def related_process(proc_groups, impact, stage):
     if impact not in proc_groups:
-        return "Proses individual tidak tersedia pada PROC INTI LMO"
+        return "Proses individual tidak tersedia pada sheet PROC"
     group = proc_groups[impact]
     candidates = [(key[1], item["value"] / group["total"]) for key, item in group["items"].items() if key[0] == stage and item["value"] / group["total"] > 0]
     if not candidates:
@@ -359,6 +356,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for arg in ("source", "proc_template", "lci_template", "output"):
         parser.add_argument(arg, type=Path)
+    parser.add_argument("--lci-output", type=Path, help="Optional workbook containing only the LCI recap sheets")
+    parser.add_argument("--proc-output", type=Path, help="Optional workbook containing only the PROC recap sheets")
     args = parser.parse_args()
     source = load_workbook(args.source, read_only=True, data_only=True)
     parsed = {}
@@ -385,9 +384,25 @@ def main():
             workbook.remove(sheet)
     workbook._sheets = [workbook[name] for name, _, _ in SHEETS]
     audit(workbook, parsed, selections)
+    output_paths = [args.output] + [path for path in (args.lci_output, args.proc_output) if path is not None]
+    if len(set(output_paths)) != len(output_paths):
+        raise ValueError("Output paths must be distinct")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(args.output)
     print(f"Saved {args.output}")
+    for path, wanted in (
+        (args.lci_output, {"LCI INTI LMO", "LCI UT LMO"}),
+        (args.proc_output, {"PROC INTI LMO", "PROC UT LMO", "PROC DOWN LMO"}),
+    ):
+        if path is None:
+            continue
+        subset = load_workbook(args.output)
+        for sheet in list(subset):
+            if sheet.title not in wanted:
+                subset.remove(sheet)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        subset.save(path)
+        print(f"Saved {path}")
 
 
 if __name__ == "__main__":
