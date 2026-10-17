@@ -1,6 +1,6 @@
 # Rekap LMO setelah perbaikan LUC HULU
 
-Hasil terkini tersedia dalam tiga workbook: [Rekap_LCI_LMO.xlsx](../Rekap_LCI_LMO.xlsx) berisi HULU, INTI, UT; [Rekap_PROC_LMO.xlsx](../Rekap_PROC_LMO.xlsx) berisi HULU, INTI, UT, DOWN; dan [Rekap_Pareto_LMO_Lengkap.xlsx](../Rekap_Pareto_LMO_Lengkap.xlsx) berisi ketujuh sheet tersebut serta `Audit Pareto`. Workbook lima sheet [Rekap_Pareto_LMO_5_Sheet.xlsx](../Rekap_Pareto_LMO_5_Sheet.xlsx) ialah hasil sebelumnya tanpa HULU dan dipertahankan sebagai arsip.
+Catatan ini mendokumentasikan versi setelah perbaikan LUC HULU. Perbaikan GWP PROC HULU berikutnya dijelaskan di [KNOWLEDGE_LMO_GWP_HULU.md](KNOWLEDGE_LMO_GWP_HULU.md); tautan workbook berikut sekarang menuju hasil setelah kedua perbaikan. [Rekap_LCI_LMO.xlsx](../Rekap_LCI_LMO.xlsx) berisi HULU, INTI, UT; [Rekap_PROC_LMO.xlsx](../Rekap_PROC_LMO.xlsx) berisi HULU, INTI, UT, DOWN; dan [Rekap_Pareto_LMO_Lengkap.xlsx](../Rekap_Pareto_LMO_Lengkap.xlsx) berisi ketujuh sheet tersebut serta `Audit Pareto`. Workbook lima sheet [Rekap_Pareto_LMO_5_Sheet.xlsx](../Rekap_Pareto_LMO_5_Sheet.xlsx) ialah hasil sebelumnya tanpa HULU dan dipertahankan sebagai arsip.
 
 | Masukan | Fungsi | SHA-256 |
 | --- | --- | --- |
@@ -19,7 +19,7 @@ Dibanding unggahan sebelumnya, nilai sumber yang berubah dalam tujuh sheet targe
 | PROC HULU LUC | `2. Land Clearing` / proses `2. Land Clearing`: `8,7171566` (70,41%); `5. Overburden Removal` / proses `Palm oil, crude {MY}`: `3,3151813` (26,78%) | 97,19% |
 | LCI HULU LUC | `2. Land Clearing` / `Transformation, from forest, intensive, ID` (Raw): `8,5475982` (69,04%); `5. Overburden Removal` / `Occupation, permanent crop` (Raw): `1,8451383` (14,90%) | 83,94% |
 
-Nama proses di kolom LCI adalah **asosiasi tingkat unit**: proses dengan kontribusi terbesar pada kategori dan unit proses yang sama di PROC. Ekspor LCI tidak memberikan pasangan inventori → proses individual. Header LCI kini menyatakan bahwa proses terkait **bukan asal inventori yang terverifikasi**. Khusus GWP HULU, kategori sumber PROC ialah `GWP100` dan LCI `GWP100 - fossil`; proses individual sengaja tidak dipadankan karena dasar indikator keduanya berbeda.
+Nama proses di kolom LCI adalah **asosiasi tingkat unit**: proses dengan kontribusi terbesar pada kategori dan unit proses yang sama di PROC. Ekspor LCI tidak memberikan pasangan inventori → proses individual. Header LCI menyatakan bahwa proses terkait **bukan asal inventori yang terverifikasi**. Pada versi yang didokumentasikan di sini, GWP HULU belum dipadankan karena PROC masih memakai `GWP100`, sedangkan LCI memakai `GWP100 - fossil`. Perbaikan berikutnya telah menyamakan indikator tersebut; lihat catatan GWP di atas.
 
 ## Aturan dan pemeriksaan
 

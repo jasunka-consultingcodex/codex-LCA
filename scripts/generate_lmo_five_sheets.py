@@ -286,8 +286,11 @@ def render_lci(workbook, template, name, phase, groups, selected, proc_groups):
                     style_from(sheet.cell(row, col), sample)
                     sheet.cell(row, col).alignment = Alignment(vertical="center", wrap_text=True)
                 stage, substance, compartment = key
-                process = ("Proses tidak dipadankan: dasar GWP HULU PROC dan LCI berbeda"
-                           if phase == "HULU" and impact == "GWP" else related_process(proc_groups, impact, stage))
+                comparable = (impact in proc_groups
+                              and proc_groups[impact]["sources"] == groups[impact]["sources"]
+                              and math.isclose(proc_groups[impact]["total"], groups[impact]["total"], rel_tol=1e-6, abs_tol=1e-12))
+                process = (related_process(proc_groups, impact, stage) if comparable
+                           else "Proses tidak dipadankan: dasar indikator PROC dan LCI berbeda")
                 values = [rank, f"{impact} — {LABELS[impact]}", f"{stage}\n{process}", f"{substance}\n[{compartment}]" if compartment else substance, item["value"], next(iter(groups[impact]["unit"])), share, cumulative]
                 for col, value in enumerate(values, 2):
                     sheet.cell(row, col, value)
@@ -318,7 +321,7 @@ def audit(workbook, parsed, selections):
     for col, width in enumerate([22, 23, 35, 65, 45, 20, 18, 18, 19, 21], 1):
         sheet.column_dimensions[get_column_letter(col)].width = width
     sheet.merge_cells("A1:J2")
-    sheet["A1"] = "AUDIT PARETO — LMO / LIMA SHEET"
+    sheet["A1"] = "AUDIT PARETO — LMO / TUJUH SHEET"
     sheet["A1"].fill = PatternFill("solid", fgColor="244062")
     sheet["A1"].font = Font(name="Aptos", size=14, bold=True, color="FFFFFF")
     sheet["A1"].alignment = Alignment(vertical="center")
