@@ -1,4 +1,4 @@
-"""Rebuild five LMO Pareto sheets from a SimaPro export and both layout templates.
+"""Rebuild seven LMO Pareto sheets from a SimaPro export and both layout templates.
 
 Usage: python scripts/generate_lmo_five_sheets.py SOURCE PROC_TEMPLATE LCI_TEMPLATE OUTPUT
 """
@@ -20,6 +20,8 @@ from generate_proc_dwn import ORDER, HEADERS, category, numeric, set_style
 
 
 SHEETS = [
+    ("LCI HULU LMO", "LCI", "HULU"),
+    ("PROC HULU LMO", "PROC", "HULU"),
     ("LCI INTI LMO", "LCI", "INTI"),
     ("PROC INTI LMO", "PROC", "INTI"),
     ("LCI UT LMO", "LCI", "UT"),
@@ -255,7 +257,7 @@ def render_lci(workbook, template, name, phase, groups, selected, proc_groups):
     sheet.merge_cells("B2:I3")
     sheet["B2"] = f"HASIL ANALISIS ISU PENTING BERDASARKAN INVENTORY PRODUK — {phase} LMO\nKontribusi Pareto ≥80% per kategori dampak"
     sheet["B2"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    headers = ["No", "Kategori Dampak", "Unit proses / proses terkait*", "Inventori / substansi penyebab", "Nilai dampak", "Satuan", "Kontribusi bertanda", "Kumulatif arah neto"]
+    headers = ["No", "Kategori Dampak", "Unit proses / proses terkait (bukan asal inventori)*", "Inventori / substansi penyebab", "Nilai dampak", "Satuan", "Kontribusi bertanda", "Kumulatif arah neto"]
     for col, heading in enumerate(headers, 2):
         for row in (5, 6, 7):
             style_from(sheet.cell(row, col), template["B5" if col <= 3 else "D5" if row == 5 else "E6"])
@@ -284,7 +286,8 @@ def render_lci(workbook, template, name, phase, groups, selected, proc_groups):
                     style_from(sheet.cell(row, col), sample)
                     sheet.cell(row, col).alignment = Alignment(vertical="center", wrap_text=True)
                 stage, substance, compartment = key
-                process = related_process(proc_groups, impact, stage)
+                process = ("Proses tidak dipadankan: dasar GWP HULU PROC dan LCI berbeda"
+                           if phase == "HULU" and impact == "GWP" else related_process(proc_groups, impact, stage))
                 values = [rank, f"{impact} — {LABELS[impact]}", f"{stage}\n{process}", f"{substance}\n[{compartment}]" if compartment else substance, item["value"], next(iter(groups[impact]["unit"])), share, cumulative]
                 for col, value in enumerate(values, 2):
                     sheet.cell(row, col, value)
@@ -391,8 +394,8 @@ def main():
     workbook.save(args.output)
     print(f"Saved {args.output}")
     for path, wanted in (
-        (args.lci_output, {"LCI INTI LMO", "LCI UT LMO"}),
-        (args.proc_output, {"PROC INTI LMO", "PROC UT LMO", "PROC DOWN LMO"}),
+        (args.lci_output, {"LCI HULU LMO", "LCI INTI LMO", "LCI UT LMO"}),
+        (args.proc_output, {"PROC HULU LMO", "PROC INTI LMO", "PROC UT LMO", "PROC DOWN LMO"}),
     ):
         if path is None:
             continue
