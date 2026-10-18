@@ -138,7 +138,7 @@ def style_from(target, sample):
     target.number_format = sample.number_format
 
 
-def render_proc(workbook, template, name, phase, stages, groups, selected):
+def render_proc(workbook, template, name, phase, stages, groups, selected, product="LMO"):
     sheet = workbook.copy_worksheet(template)
     sheet.title = name
     for region in list(sheet.merged_cells.ranges):
@@ -158,7 +158,7 @@ def render_proc(workbook, template, name, phase, stages, groups, selected):
         for col in range(2, 20):
             set_style(sheet.cell(row, col), template["B2"])
     sheet.merge_cells("B2:S3")
-    sheet["B2"] = f"HASIL ANALISIS ISU PENTING BERDASARKAN PROSES {phase} LMO\nKontribusi Pareto ≥80% per kategori dampak"
+    sheet["B2"] = f"HASIL ANALISIS ISU PENTING BERDASARKAN PROSES {phase} {product}\nKontribusi Pareto ≥80% per kategori dampak"
     sheet["B2"].alignment = Alignment(vertical="center", horizontal="center", wrap_text=True)
     for row in (2, 3):
         sheet.row_dimensions[row].height = 25
@@ -217,7 +217,7 @@ def render_proc(workbook, template, name, phase, stages, groups, selected):
         sheet.cell(first, 2).alignment = Alignment(vertical="center", wrap_text=True)
     notes = [
         "Unit proses di luar Pareto: " + ("; ".join(stage for stage in stages if stage not in included) or "tidak ada"),
-        f"Sumber: SimaPro LMO.xlsx / {'PROC DWN LMO' if phase == 'DOWN' else name}. Kontribusi bertanda mengikuti SimaPro; kumulatif arah neto ada di workbook gabungan / Audit Pareto. CEN/CED diagregasi; ETP terpisah.",
+        f"Sumber: SimaPro {product}.xlsx / {'PROC DWN LMO' if product == 'LMO' and phase == 'DOWN' else name}. Kontribusi bertanda mengikuti SimaPro; kumulatif arah neto ada di workbook gabungan / Audit Pareto. CEN/CED diagregasi; ETP terpisah.",
     ]
     for index, value in enumerate(notes, row + 1):
         sheet.merge_cells(start_row=index, start_column=2, end_row=index, end_column=19)
@@ -244,7 +244,7 @@ def related_process(proc_groups, impact, stage):
     return sorted(candidates, key=lambda pair: (-pair[1], pair[0]))[0][0]
 
 
-def render_lci(workbook, template, name, phase, groups, selected, proc_groups):
+def render_lci(workbook, template, name, phase, groups, selected, proc_groups, product="LMO"):
     sheet = workbook.create_sheet(name)
     sheet.sheet_view.showGridLines = False
     sheet.freeze_panes = "F8"
@@ -255,7 +255,7 @@ def render_lci(workbook, template, name, phase, groups, selected, proc_groups):
             style_from(sheet.cell(row, col), template["B2"])
         sheet.row_dimensions[row].height = 25
     sheet.merge_cells("B2:I3")
-    sheet["B2"] = f"HASIL ANALISIS ISU PENTING BERDASARKAN INVENTORY PRODUK — {phase} LMO\nKontribusi Pareto ≥80% per kategori dampak"
+    sheet["B2"] = f"HASIL ANALISIS ISU PENTING BERDASARKAN INVENTORY PRODUK — {phase} {product}\nKontribusi Pareto ≥80% per kategori dampak"
     sheet["B2"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     headers = ["No", "Kategori Dampak", "Unit proses / proses terkait (bukan asal inventori)*", "Inventori / substansi penyebab", "Nilai dampak", "Satuan", "Kontribusi bertanda", "Kumulatif arah neto"]
     for col, heading in enumerate(headers, 2):
@@ -305,7 +305,7 @@ def render_lci(workbook, template, name, phase, groups, selected, proc_groups):
     sheet.cell(row + 1, 2).font = Font(name="Aptos", size=10, italic=True, color="52616B")
     sheet.row_dimensions[row + 1].height = 35
     sheet.merge_cells(start_row=row + 2, start_column=2, end_row=row + 2, end_column=9)
-    sheet.cell(row + 2, 2, f"Sumber: SimaPro LMO.xlsx / {name}. Nilai dihitung dari tabel kanan; kontribusi bertanda = nilai / |total|. CEN/CED diagregasi; ETP terpisah.")
+    sheet.cell(row + 2, 2, f"Sumber: SimaPro {product}.xlsx / {name}. Nilai dihitung dari tabel kanan; kontribusi bertanda = nilai / |total|. CEN/CED diagregasi; ETP terpisah.")
     sheet.cell(row + 2, 2).font = Font(name="Aptos", size=10, italic=True, color="52616B")
     sheet.row_dimensions[row + 2].height = 25
     sheet.print_area = f"B2:I{row + 2}"
@@ -316,12 +316,13 @@ def render_lci(workbook, template, name, phase, groups, selected, proc_groups):
     sheet.page_setup.paperSize = sheet.PAPERSIZE_A3
 
 
-def audit(workbook, parsed, selections):
+def audit(workbook, parsed, selections, sheet_specs=None, product="LMO"):
+    sheet_specs = SHEETS if sheet_specs is None else sheet_specs
     sheet = workbook.create_sheet("Audit Pareto")
     for col, width in enumerate([22, 23, 35, 65, 45, 20, 18, 18, 19, 21], 1):
         sheet.column_dimensions[get_column_letter(col)].width = width
     sheet.merge_cells("A1:J2")
-    sheet["A1"] = "AUDIT PARETO — LMO / TUJUH SHEET"
+    sheet["A1"] = f"AUDIT PARETO — {product} / {len(sheet_specs)} SHEET SUMBER"
     sheet["A1"].fill = PatternFill("solid", fgColor="244062")
     sheet["A1"].font = Font(name="Aptos", size=14, bold=True, color="FFFFFF")
     sheet["A1"].alignment = Alignment(vertical="center")
@@ -334,7 +335,7 @@ def audit(workbook, parsed, selections):
         cell.font = Font(name="Aptos", size=10, bold=True, color="244062")
         cell.alignment = Alignment(wrap_text=True, vertical="center")
     row = 6
-    for name, _, _ in SHEETS:
+    for name, _, _ in sheet_specs:
         _, groups = parsed[name]
         for impact in ORDER:
             if impact not in groups:

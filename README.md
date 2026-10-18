@@ -16,3 +16,10 @@ LCA Interpretation
 - [Catatan arsip rekap lima sheet sebelumnya](docs/KNOWLEDGE_LMO_5_SHEET.md)
 - [Rekap Pareto BMO: empat tabel proses dan tiga tabel inventori](Rekap_Pareto_BMO.xlsx)
 - [Catatan metode dan keterbatasan data BMO](docs/KNOWLEDGE_BMO.md)
+
+## Analisis SMO
+
+- [Rekap LCI SMO dengan format analisis LCA dan LCI terhadap LCIA](Rekap_LCI_SMO.xlsx)
+- [Rekap proses SMO dengan format LCA hotspot process](Rekap_PROC_SMO.xlsx)
+- [Rekap gabungan SMO dan audit Pareto](Rekap_Pareto_SMO_Lengkap.xlsx)
+- [Catatan sumber, metode, dan ketersediaan LCI DWN](docs/KNOWLEDGE_SMO.md)
