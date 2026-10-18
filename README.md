@@ -23,3 +23,10 @@ LCA Interpretation
 - [Rekap proses SMO dengan format LCA hotspot process](Rekap_PROC_SMO.xlsx)
 - [Rekap gabungan SMO dan audit Pareto](Rekap_Pareto_SMO_Lengkap.xlsx)
 - [Catatan sumber, metode, dan ketersediaan LCI DWN](docs/KNOWLEDGE_SMO.md)
+
+## Analisis GMO
+
+- [Rekap LCI GMO: HULU, INTI, UT](Rekap_LCI_GMO.xlsx)
+- [Rekap proses GMO: HULU, INTI, UT, DWN](Rekap_PROC_GMO.xlsx)
+- [Rekap gabungan GMO dan audit Pareto](Rekap_Pareto_GMO_Lengkap.xlsx)
+- [Catatan sumber dan metode rekap GMO](docs/KNOWLEDGE_GMO.md)
