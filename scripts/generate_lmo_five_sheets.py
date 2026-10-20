@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import argparse
 import math
-import re
 from collections import defaultdict
 from copy import copy
 from pathlib import Path
@@ -41,7 +40,7 @@ LABELS = {
 }
 
 
-def parse_sheet(sheet, kind):
+def parse_sheet(sheet, kind, expected_impacts=None, skip_other_kind=False):
     rows = list(sheet.values)
     starts = [(i, row[2]) for i, row in enumerate(rows) if row[1] == "Category: "]
     if not starts:
@@ -49,17 +48,24 @@ def parse_sheet(sheet, kind):
     groups = defaultdict(lambda: {"total": 0.0, "unit": set(), "items": defaultdict(lambda: {"value": 0.0, "rows": set()}), "sources": []})
     seen, stages = set(), None
     for block, (start, raw) in enumerate(starts):
-        if raw in seen:
-            raise ValueError(f"Duplicate category in {sheet.title}: {raw}")
-        seen.add(raw)
         end = starts[block + 1][0] if block + 1 < len(starts) else len(rows)
         header_at = next((i for i in range(start, end) if rows[i][1] == "No"), None)
         if header_at is None:
             raise ValueError(f"No table for {raw} in {sheet.title}")
         header = rows[header_at]
+        expected_header = "Process" if kind == "PROC" else "Substance"
+        if header[2] != expected_header:
+            if skip_other_kind and header[2] in ("Process", "Substance"):
+                continue
+            raise ValueError(f"Wrong table type for {raw} in {sheet.title}: {header[2]}")
+        if raw in seen:
+            raise ValueError(f"Duplicate category in {sheet.title}: {raw}")
+        seen.add(raw)
         right_no = next(i for i in range(2, len(header)) if header[i] == "No")
         shift = right_no - 1
-        stage_columns = [(i, str(name)) for i, name in enumerate(header) if 6 <= i < right_no and isinstance(name, str) and re.match(r"^\d+\.", name)]
+        stage_columns = [(i, str(name)) for i, name in enumerate(header) if 6 <= i < right_no and isinstance(name, str) and name.strip()]
+        if not stage_columns:
+            raise ValueError(f"No unit-process columns for {raw} in {sheet.title}")
         stage_names = [name for _, name in stage_columns]
         if stages is None:
             stages = stage_names
@@ -94,14 +100,14 @@ def parse_sheet(sheet, kind):
                 item = group["items"][key]
                 item["value"] += amount
                 item["rows"].add(row_index + 1)
-    expected_impacts = set(ORDER)
+    expected_impacts = set(ORDER) if expected_impacts is None else set(expected_impacts)
     if set(groups) != expected_impacts:
         raise ValueError(f"Unexpected categories in {sheet.title}: {sorted(groups)}")
     for impact, group in groups.items():
         if len(group["unit"]) != 1:
             raise ValueError(f"Mixed units in {sheet.title} / {impact}: {group['unit']}")
     for impact in ("CEN", "CED"):
-        if len(groups[impact]["sources"]) != 3:
+        if impact in groups and len(groups[impact]["sources"]) != 3:
             raise ValueError(f"Expected three energy subcategories for {impact} in {sheet.title}")
     return stages, groups
 
@@ -244,7 +250,7 @@ def related_process(proc_groups, impact, stage):
     return sorted(candidates, key=lambda pair: (-pair[1], pair[0]))[0][0]
 
 
-def render_lci(workbook, template, name, phase, groups, selected, proc_groups, product="LMO"):
+def render_lci(workbook, template, name, phase, groups, selected, proc_groups, product="LMO", source_note=None):
     sheet = workbook.create_sheet(name)
     sheet.sheet_view.showGridLines = False
     sheet.freeze_panes = "F8"
@@ -308,7 +314,15 @@ def render_lci(workbook, template, name, phase, groups, selected, proc_groups, p
     sheet.cell(row + 2, 2, f"Sumber: SimaPro {product}.xlsx / {name}. Nilai dihitung dari tabel kanan; kontribusi bertanda = nilai / |total|. CEN/CED diagregasi; ETP terpisah.")
     sheet.cell(row + 2, 2).font = Font(name="Aptos", size=10, italic=True, color="52616B")
     sheet.row_dimensions[row + 2].height = 25
-    sheet.print_area = f"B2:I{row + 2}"
+    last_row = row + 2
+    if source_note:
+        last_row += 1
+        sheet.merge_cells(start_row=last_row, start_column=2, end_row=last_row, end_column=9)
+        sheet.cell(last_row, 2, source_note)
+        sheet.cell(last_row, 2).font = Font(name="Aptos", size=10, italic=True, color="52616B")
+        sheet.cell(last_row, 2).alignment = Alignment(wrap_text=True, vertical="center")
+        sheet.row_dimensions[last_row].height = 30
+    sheet.print_area = f"B2:I{last_row}"
     sheet.sheet_properties.pageSetUpPr.fitToPage = True
     sheet.page_setup.fitToWidth = 1
     sheet.page_setup.fitToHeight = 0
@@ -342,7 +356,9 @@ def audit(workbook, parsed, selections, sheet_specs=None, product="LMO"):
                 continue
             group = groups[impact]
             for rank, (key, item, share, cumulative) in enumerate(selections[name][impact], 1):
-                values = [name, impact, key[0], key[1], key[2] if len(key) > 2 else "", item["value"], next(iter(group["unit"])), share, cumulative, ", ".join(map(str, sorted(item["rows"])))]
+                references = item.get("source_refs")
+                source_rows = ", ".join(references) if references else ", ".join(map(str, sorted(item["rows"])))
+                values = [name, impact, key[0], key[1], key[2] if len(key) > 2 else "", item["value"], next(iter(group["unit"])), share, cumulative, source_rows]
                 for col, value in enumerate(values, 1):
                     cell = sheet.cell(row, col, value)
                     cell.fill = PatternFill("solid", fgColor="E6F2E8" if rank == len(selections[name][impact]) else "F3F7F9" if row % 2 == 0 else "FFFFFF")

@@ -30,3 +30,10 @@ LCA Interpretation
 - [Rekap proses GMO: HULU, INTI, UT, DWN](Rekap_PROC_GMO.xlsx)
 - [Rekap gabungan GMO dan audit Pareto](Rekap_Pareto_GMO_Lengkap.xlsx)
 - [Catatan sumber dan metode rekap GMO](docs/KNOWLEDGE_GMO.md)
+
+## Analisis BSSR
+
+- [Rekap LCI BSSR: HULU, INTI, UT](Rekap_LCI_BSSR.xlsx)
+- [Rekap proses BSSR: HULU, INTI, UT](Rekap_PROC_BSSR.xlsx)
+- [Rekap gabungan BSSR dan audit Pareto](Rekap_Pareto_BSSR_Lengkap.xlsx)
+- [Catatan sumber, metode, dan koreksi letak blok WSF UT](docs/KNOWLEDGE_BSSR.md)
